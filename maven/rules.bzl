@@ -68,6 +68,12 @@ def _generate_pom_file(ctx, version_file):
         version = ctx.attr.version_overrides.get(pom_dependency_artifact, pom_dependency_version)
         pom_deps.append(pom_dependency_artifact + ":" + version)
 
+    for pom_dependency in ctx.attr.extra_deps:
+        pom_dependency_coordinates = _parse_maven_coordinates(pom_dependency, False)
+        pom_dependency_artifact = pom_dependency_coordinates.group_id + ":" + pom_dependency_coordinates.artifact_id
+        pom_dependency_version = pom_dependency_coordinates.version
+        pom_deps.append(pom_dependency_artifact + ":" + pom_dependency_version)
+
     maven_coordinates = _parse_maven_coordinates(ctx.attr.target[JarInfo].name)
     pom_file = ctx.actions.declare_file("{}_pom.xml".format(ctx.attr.name))
 
@@ -205,6 +211,19 @@ def _aggregate_dependency_info_impl(target, ctx):
             type = "pom",
             maven_coordinates = maven_coordinates
         )]
+    elif ctx.rule.kind == "proto_library":
+        pass
+    elif ctx.rule.kind == "java_proto_library":
+        jars = target[DefaultInfo].files.to_list()
+        class_jars = sorted([jar for jar in jars if not jar.basename.endswith("-src.jar")])
+        source_jars = sorted([jar for jar in jars if jar.basename.endswith("-src.jar")])
+        dependencies = [struct(
+            type = "jar",
+            class_jar = class_jar,
+            source_jar = source_jar,
+        ) for (class_jar, source_jar) in zip(
+            class_jars, source_jars + [None] * (len(class_jars) - len(source_jars))
+        )]
     # include runtime output jars
     elif target[JavaInfo].runtime_output_jars:
         jars = target[JavaInfo].runtime_output_jars
@@ -291,6 +310,10 @@ assemble_maven = rule(
         "developers": attr.string_list_dict(
             default = {},
             doc = "Project developers to fill into pom.xml",
+        ),
+        "extra_deps": attr.string_list(
+            default = [],
+            doc = "Extra dependencies to fill into pom.xml",
         ),
         "platform_overrides": attr.label_keyed_string_dict(
             default = {},
