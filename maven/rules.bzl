@@ -235,6 +235,8 @@ def _aggregate_dependency_info_impl(target, ctx):
         ) for (jar, source_jar) in zip(
             jars, source_jars + [None] * (len(jars) - len(source_jars))
         )]
+    elif deps_all:
+        pass
     else:
         fail("Unsure how to package dependency for target: %s" % target)
 
