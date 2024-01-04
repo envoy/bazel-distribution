@@ -92,6 +92,21 @@ if len(sys.argv) < 2:
 
 
 repo_type, should_sign = unpack_args(*sys.argv)
+jar_path = "$JAR_PATH"
+pom_file_path = "$POM_PATH"
+srcjar_path = "$SRCJAR_PATH"
+
+if repo_type == "local":
+    errors = sp.check_output([
+        'mvn', '-q',
+        'install:install-file',
+        '-Dfile=' + jar_path,
+        '-Dsources=' + srcjar_path,
+        '-DpomFile=' + pom_file_path
+    ])
+    if errors:
+        raise Exception('mvn install failed with errors: {}'.format(errors))
+    sys.exit(0)
 
 username, password = os.getenv('DEPLOY_MAVEN_USERNAME'), os.getenv('DEPLOY_MAVEN_PASSWORD')
 
@@ -106,9 +121,6 @@ maven_repositories = {
     "release": "{release}"
 }
 maven_url = maven_repositories[repo_type]
-jar_path = "$JAR_PATH"
-pom_file_path = "$POM_PATH"
-srcjar_path = "$SRCJAR_PATH"
 
 namespace = { 'namespace': 'http://maven.apache.org/POM/4.0.0' }
 root = ElementTree.parse(pom_file_path).getroot()
