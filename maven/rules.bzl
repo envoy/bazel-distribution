@@ -187,6 +187,9 @@ def find_maven_coordinates(target, tags):
             if coordinates.endswith("{pom_version}") and not target_is_in_root_workspace:
                 coordinates = coordinates.replace("{pom_version}", target.label.workspace_root.replace("external/", ""))
             return coordinates
+    if target.label.workspace_root == "external/com_github_grpc_grpc_kotlin" and target.label.name in ["context", "stub"]:
+        return "io.grpc:grpc-kotlin-stub:UNKNOWN"
+    return None
 
 JarInfo = provider(
     fields = {
