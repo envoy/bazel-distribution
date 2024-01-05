@@ -72,9 +72,10 @@ class JarAssembler : Callable<Unit> {
                 ZipFile(jar).use { jarZip ->
                     jarZip.entries().asSequence().forEach { entry ->
                         if (entryNames.contains(entry.name)) {
-                            throw RuntimeException("duplicate entry in the JAR: ${entry.name}")
+                            // ignore duplicate files
+                            return@forEach
                         }
-                        if (entry.name.contains("META-INF")) {
+                        if (entry.name.contains("META-INF") && entry.name.contains("pom.xml")) {
                             // pom.xml will be added by us
                             return@forEach
                         }
