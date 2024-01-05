@@ -72,8 +72,12 @@ class JarAssembler : Callable<Unit> {
                 ZipFile(jar).use { jarZip ->
                     jarZip.entries().asSequence().forEach { entry ->
                         if (entryNames.contains(entry.name)) {
-                            // ignore duplicate files
-                            return@forEach
+                            if (entry.name.contains("META-INF")) {
+                                // ignore duplicate files in META-INF
+                                return@forEach
+                            }
+                            // throw exception for other duplicate files
+                            throw RuntimeException("duplicate entry in the JAR: ${entry.name}")
                         }
                         if (entry.name.contains("META-INF") && entry.name.contains("pom.xml")) {
                             // pom.xml will be added by us
@@ -106,7 +110,7 @@ class JarAssembler : Callable<Unit> {
      */
     private fun preCreateDirectories(path: Path): Map<String, ByteArray> {
         val newEntries = HashMap<String, ByteArray>()
-        for (i in path.nameCount-1 downTo 1) {
+        for (i in path.nameCount - 1 downTo 1) {
             val subPath = path.subpath(0, i).toString() + "/"
             newEntries[subPath] = ByteArray(0)
         }
@@ -118,7 +122,8 @@ class JarAssembler : Callable<Unit> {
             // files in source JARs are moved according to their `package` statement
             val sourceFile = toStringUTF8(sourceFileBytes)
             val sourceFileName = Paths.get(entry.name).fileName.toString()
-            val sourceFilePackage = getJavaPackage(sourceFile) ?: throw RuntimeException("could not obtain package of ${entry.name}")
+            val sourceFilePackage =
+                getJavaPackage(sourceFile) ?: throw RuntimeException("could not obtain package of ${entry.name}")
             "${sourceFilePackage.replace(".", "/")}/$sourceFileName"
         } else {
             entry.name
