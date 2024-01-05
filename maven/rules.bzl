@@ -203,9 +203,7 @@ def _aggregate_dependency_info_impl(target, ctx):
     deps = getattr(ctx.rule.attr, "deps", [])
     runtime_deps = getattr(ctx.rule.attr, "runtime_deps", [])
     exports = getattr(ctx.rule.attr, "exports", [])
-    java_grpc_dep = getattr(ctx.rule.attr, "java_grpc_dep", None)
-    java_grpc_deps = [java_grpc_dep] if java_grpc_dep else []
-    deps_all = deps + exports + runtime_deps + java_grpc_deps
+    deps_all = deps + exports + runtime_deps
 
     maven_coordinates = find_maven_coordinates(target, tags)
     dependencies = []
@@ -262,7 +260,6 @@ aggregate_dependency_info = aspect(
         "deps",
         "exports",
         "runtime_deps",
-        "java_grpc_dep",
     ],
     doc = "Collects the Maven coordinates of the given java_library, its direct dependencies, and its transitive dependencies",
     implementation = _aggregate_dependency_info_impl,
