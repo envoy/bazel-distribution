@@ -41,7 +41,7 @@ def md5(fn):
 
 def upload_file(url, username, password, local_fn, remote_fn):
     upload_status_code = sp.check_output([
-        'curl', '--silent',
+        'curl', '--silent', '--output', '/dev/null',
         '--write-out', '%{http_code}',
         '-u', '{}:{}'.format(username, password),
         '--upload-file', local_fn,
@@ -55,7 +55,7 @@ def upload_file(url, username, password, local_fn, remote_fn):
 
 def upload_str(url, username, password, string, remote_fn):
     upload_status_code = sp.check_output([
-        'curl', '--silent',
+        'curl', '--silent', '--output', '/dev/null',
         '--write-out', '%{http_code}',
         '-u', '{}:{}'.format(username, password),
         '--upload-file', '-',
