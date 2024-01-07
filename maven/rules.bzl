@@ -17,9 +17,9 @@
 # under the License.
 #
 
+def _parse_maven_coordinates(coordinates_string, enforce_version_template = True):
+    coordinates = coordinates_string.split(":")
 
-def _parse_maven_coordinates(coordinates_string, enforce_version_template=True):
-    coordinates = coordinates_string.split(':')
     # Maven coordinates in the bazel ecosystem can include more than three fields.
     # The group and artifact IDs are always the first 2 and the version is always the last field.
     group_id, artifact_id = coordinates[0:2]
@@ -29,7 +29,7 @@ def _parse_maven_coordinates(coordinates_string, enforce_version_template=True):
     return struct(
         group_id = group_id,
         artifact_id = artifact_id,
-        version = version
+        version = version,
     )
 
 def _generate_version_file(ctx):
@@ -55,7 +55,7 @@ def _generate_pom_file(ctx, version_file):
             override_dependencies.append(maven_coordinate)
 
     pom_deps = [] + override_dependencies
-    for pom_dependency in [dep for dep in ctx.attr.target[JarInfo].deps.to_list() if dep.type == 'pom']:
+    for pom_dependency in [dep for dep in ctx.attr.target[JarInfo].deps.to_list() if dep.type == "pom"]:
         pom_dependency = pom_dependency.maven_coordinates
         if pom_dependency in overridden:
             continue
@@ -88,6 +88,7 @@ def _generate_pom_file(ctx, version_file):
             "--license=" + ctx.attr.license,
             "--scm_url=" + ctx.attr.scm_url,
             "--developers=" + json.encode(ctx.attr.developers),
+            "--distribution_management=" + json.encode(ctx.attr.distribution_management),
             "--target_group_id=" + maven_coordinates.group_id,
             "--target_artifact_id=" + maven_coordinates.artifact_id,
             "--target_deps_coordinates=" + ";".join(pom_deps),
@@ -111,7 +112,7 @@ def _generate_class_jar(ctx, pom_file):
 
     output_jar = ctx.actions.declare_file("{}-{}.jar".format(maven_coordinates.group_id, maven_coordinates.artifact_id))
 
-    class_jar_deps = [dep.class_jar for dep in target[JarInfo].deps.to_list() if dep.type == 'jar']
+    class_jar_deps = [dep.class_jar for dep in target[JarInfo].deps.to_list() if dep.type == "jar"]
     class_jar_paths = [jar.path] + [target.path for target in class_jar_deps]
 
     ctx.actions.run(
@@ -148,7 +149,7 @@ def _generate_source_jar(ctx):
 
     output_jar = ctx.actions.declare_file("{}-{}-sources.jar".format(maven_coordinates.group_id, maven_coordinates.artifact_id))
 
-    source_jar_deps = [dep.source_jar for dep in target[JarInfo].deps.to_list() if dep.type == 'jar' and dep.source_jar]
+    source_jar_deps = [dep.source_jar for dep in target[JarInfo].deps.to_list() if dep.type == "jar" and dep.source_jar]
     source_jar_paths = [srcjar.path] + [target.path for target in source_jar_deps]
 
     ctx.actions.run(
@@ -175,7 +176,7 @@ def _assemble_maven_impl(ctx):
 
     return [
         DefaultInfo(files = depset(output_files)),
-        MavenDeploymentInfo(jar = class_jar, pom = pom_file, srcjar = source_jar)
+        MavenDeploymentInfo(jar = class_jar, pom = pom_file, srcjar = source_jar),
     ]
 
 def find_maven_coordinates(target, tags):
@@ -212,7 +213,7 @@ def _aggregate_dependency_info_impl(target, ctx):
     if maven_coordinates:
         dependencies = [struct(
             type = "pom",
-            maven_coordinates = maven_coordinates
+            maven_coordinates = maven_coordinates,
         )]
     elif ctx.rule.kind == "proto_library":
         pass
@@ -225,9 +226,11 @@ def _aggregate_dependency_info_impl(target, ctx):
             class_jar = class_jar,
             source_jar = source_jar,
         ) for (class_jar, source_jar) in zip(
-            class_jars, source_jars + [None] * (len(class_jars) - len(source_jars))
+            class_jars,
+            source_jars + [None] * (len(class_jars) - len(source_jars)),
         )]
-    # include runtime output jars
+        # include runtime output jars
+
     elif target[JavaInfo].runtime_output_jars:
         jars = target[JavaInfo].runtime_output_jars
         source_jars = target[JavaInfo].source_jars
@@ -236,7 +239,8 @@ def _aggregate_dependency_info_impl(target, ctx):
             class_jar = jar,
             source_jar = source_jar,
         ) for (jar, source_jar) in zip(
-            jars, source_jars + [None] * (len(jars) - len(source_jars))
+            jars,
+            source_jars + [None] * (len(jars) - len(source_jars)),
         )]
     elif deps_all:
         pass
@@ -249,8 +253,8 @@ def _aggregate_dependency_info_impl(target, ctx):
             # Filter transitive JARs from dependency that has maven coordinates
             # because those dependencies will already include the JARs as part
             # of their classpath
-            depset([dep for dep in target[JarInfo].deps.to_list() if dep.type == 'pom'])
-                if target[JarInfo].name else target[JarInfo].deps for target in deps_all
+            depset([dep for dep in target[JarInfo].deps.to_list() if dep.type == "pom"]) if target[JarInfo].name else target[JarInfo].deps
+            for target in deps_all
         ]),
     )
 
@@ -316,6 +320,10 @@ assemble_maven = rule(
             default = {},
             doc = "Project developers to fill into pom.xml",
         ),
+        "distribution_management": attr.string_list_dict(
+            default = {},
+            doc = "Project distribution management to fill into pom.xml",
+        ),
         "extra_deps": attr.string_list(
             default = [],
             doc = "Extra dependencies to fill into pom.xml",
@@ -357,18 +365,16 @@ assemble_maven(
     doc = "Assemble Java package for subsequent deployment to Maven repo",
 )
 
-
 ###############################
 ####    MAVEN DEPLOYMENT   ####
 ###############################
 
-
 MavenDeploymentInfo = provider(
     fields = {
-        'jar': 'JAR file to deploy',
-        'srcjar': 'JAR file with sources',
-        'pom': 'Accompanying pom.xml file'
-    }
+        "jar": "JAR file to deploy",
+        "srcjar": "JAR file with sources",
+        "pom": "Accompanying pom.xml file",
+    },
 )
 
 def _deploy_maven_impl(ctx):
@@ -386,8 +392,8 @@ def _deploy_maven_impl(ctx):
             "$SRCJAR_PATH": src_jar_link,
             "$POM_PATH": pom_xml_link,
             "{snapshot}": ctx.attr.snapshot,
-            "{release}": ctx.attr.release
-        }
+            "{release}": ctx.attr.release,
+        },
     )
 
     files = [
@@ -404,7 +410,7 @@ def _deploy_maven_impl(ctx):
 
     return DefaultInfo(
         executable = deploy_maven_script,
-        runfiles = ctx.runfiles(files=files, symlinks = symlinks)
+        runfiles = ctx.runfiles(files = files, symlinks = symlinks),
     )
 
 _deploy_maven = rule(
@@ -412,15 +418,15 @@ _deploy_maven = rule(
         "target": attr.label(
             mandatory = True,
             providers = [MavenDeploymentInfo],
-            doc = "assemble_maven target to deploy"
+            doc = "assemble_maven target to deploy",
         ),
-        "snapshot" : attr.string(
+        "snapshot": attr.string(
             mandatory = True,
-            doc = 'Snapshot repository to release maven artifact to',
+            doc = "Snapshot repository to release maven artifact to",
         ),
-        "release" : attr.string(
+        "release": attr.string(
             mandatory = True,
-            doc = 'Release repository to release maven artifact to'
+            doc = "Release repository to release maven artifact to",
         ),
         "_deploy_script_template": attr.label(
             allow_single_file = True,
@@ -428,8 +434,8 @@ _deploy_maven = rule(
         ),
         "deploy_script_name": attr.string(
             mandatory = True,
-            doc = 'Name of instantiated deployment script'
-        )
+            doc = "Name of instantiated deployment script",
+        ),
     },
     executable = True,
     implementation = _deploy_maven_impl,
@@ -437,7 +443,7 @@ _deploy_maven = rule(
     Deploy `assemble_maven` target into Maven repo.
 
     Select deployment to `snapshot` or `release` repository with `bazel run //:some-deploy-maven -- [snapshot|release]
-    """
+    """,
 )
 
 def deploy_maven(name, target, snapshot, release, **kwargs):
@@ -456,5 +462,5 @@ def deploy_maven(name, target, snapshot, release, **kwargs):
     native.py_binary(
         name = name,
         srcs = [deploy_script_target_name],
-        main = deploy_script_name
+        main = deploy_script_name,
     )

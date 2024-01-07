@@ -69,6 +69,9 @@ class PomGenerator : Callable<Unit> {
     @Option(names = ["--developers"])
     var developers = "{}"
 
+    @Option(names = ["--distribution_management"])
+    var distributionManagement = "{}"
+
     @Option(names = ["--target_group_id"])
     var targetGroupId = ""
 
@@ -147,6 +150,19 @@ class PomGenerator : Callable<Unit> {
             }
         }.forEach(::appendChild)
     }
+
+    fun Document.distributionManagement(repositories: JsonObject): Element =
+        createElement("distributionManagement").apply {
+            repositories.filter { (id, _) -> id in setOf("repository", "snapshotRepository") }.map { (id, attributes) ->
+                createElement(id).apply {
+                    attributes.asArray().map { it.asString().split("=") }.map { (element, value) ->
+                        createElement(element).apply {
+                            appendChild(createTextNode(value))
+                        }
+                    }.forEach(::appendChild)
+                }
+            }.forEach(::appendChild)
+        }
 
     fun scm(pom: Document, version: String): Element {
         val scm = pom.createElement("scm")
@@ -233,6 +249,9 @@ class PomGenerator : Callable<Unit> {
 
         val developers = Json.parse(developers).asObject()
         if (!developers.isEmpty) rootElement.appendChild(pom.developers(developers))
+
+        val distributionManagement = Json.parse(distributionManagement).asObject()
+        if (!distributionManagement.isEmpty) rootElement.appendChild(pom.distributionManagement(distributionManagement))
 
         // source control management information
         rootElement.appendChild(scm(pom, version))
