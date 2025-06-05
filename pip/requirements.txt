@@ -6,7 +6,7 @@ charset-normalizer==3.0.1
 colorama==0.4.6
 cryptography==39.0.0
 docutils==0.19
-idna==3.4
+idna==3.7
 importlib-metadata==6.0.0
 importlib-resources==5.10.2
 jaraco-classes==3.2.3
